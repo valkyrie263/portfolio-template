@@ -1,13 +1,25 @@
-import type { LinksFunction } from "@remix-run/cloudflare";
+import React from "react";
 import {
   Links,
+  LiveReload,
   Meta,
   Outlet,
   Scripts,
   ScrollRestoration,
 } from "@remix-run/react";
+import type {
+  LinksFunction,
+  MetaFunction
+} from "@remix-run/node";
 
 import "./tailwind.css";
+
+export const meta: MetaFunction = () => {
+  return [
+    { title: "Portfolio" },
+    { name: "description", content: "Portfolio" },
+  ];
+};
 
 export const links: LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -24,17 +36,18 @@ export const links: LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="ja">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
         <Links />
       </head>
-      <body>
+      <body className="min-h-screen bg-background">
         {children}
         <ScrollRestoration />
         <Scripts />
+        <LiveReload />
       </body>
     </html>
   );
