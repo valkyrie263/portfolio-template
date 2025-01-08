@@ -1,87 +1,35 @@
-import { Download, Github, Mail, Printer, Twitter, Moon, Sun } from "lucide-react";
-import React, { useState, useEffect, useMemo, createContext, useContext } from "react";
-import { Button } from "~/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+  Download,
+  Github,
+  Mail,
+  Moon,
+  Printer,
+  Sun,
+  Twitter,
+} from "lucide-react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Progress } from "~/components/ui/progress";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
-
-interface Skill {
-  name: string;
-  level: number;
-  icon: React.ReactElement;
-  description: { [key: string]: string };
-}
-
-interface Certification {
-  name: { [key: string]: string };
-  date: string;
-}
-
-interface ProfileData {
-  name: string;
-  title: { [key: string]: string };
-  bio: { [key: string]: string };
-  skills: Skill[];
-  interests: { [key: string]: string[] };
-  certifications: Certification[];
-  contacts: {
-    email: string;
-    github?: string;
-    x?: string;
-  };
-  avatar?: string;
-}
-
-interface LocaleData {
-  title: string;
-  printButton: string;
-  downloadVCard: string;
-  interests: string;
-  contacts: string;
-  skills: string;
-  certifications: string;
-  emailLabel: string;
-  githubLabel: string;
-  xLabel: string;
-  skillLevelBeginner: string;
-  skillLevelIntermediate: string;
-  skillLevelAdvanced: string;
-  profileCardContent: {
-    avatarAltText: string;
-  };
-  cards: {
-    profile: {
-      downloadVCard: string;
-      printButton: string;
-    };
-    interests: {
-      title: string;
-    };
-    contacts: {
-      title: string;
-      emailLabel: string;
-      githubLabel: string;
-      xLabel: string;
-    };
-    skills: {
-      title: string;
-    };
-    certifications: {
-      title: string;
-    };
-  };
-  vCardError: string;
-  vCardGenerateError: string;
-}
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
+import { profile } from "~/data/profile";
+import { Certification, LocaleData, ProfileData, Skill } from "~/types";
 
 const locales: Record<"ja" | "en", LocaleData> = {
   ja: {
-    title: "タイトル",
+    title: profile.title.ja,
     printButton: "印刷",
     downloadVCard: "vCardをダウンロード",
     interests: "研究分野・興味",
@@ -119,10 +67,11 @@ const locales: Record<"ja" | "en", LocaleData> = {
       },
     },
     vCardError: "エラー: vCardの生成に必要な情報が不足しています。",
-    vCardGenerateError: "vCardの生成中にエラーが発生しました。コンソールを確認してください。",
+    vCardGenerateError:
+      "vCardの生成中にエラーが発生しました。コンソールを確認してください。",
   },
   en: {
-    title: "Title",
+    title: profile.title.en,
     printButton: "Print",
     downloadVCard: "Download vCard",
     interests: "Interests",
@@ -160,7 +109,8 @@ const locales: Record<"ja" | "en", LocaleData> = {
       },
     },
     vCardError: "Error: Insufficient information to generate vCard.",
-    vCardGenerateError: "An error occurred while generating the vCard. Check the console.",
+    vCardGenerateError:
+      "An error occurred while generating the vCard. Check the console.",
   },
 };
 
@@ -192,15 +142,17 @@ const useTheme = () => {
 };
 
 // スキルアイテムコンポーネント
-const SkillItem: React.FC<{ skill: Skill; t: LocaleData; currentLocale: "ja" | "en" }> = ({
-  skill,
-  t,
-  currentLocale,
-}) => {
+const SkillItem: React.FC<{
+  skill: Skill;
+  t: LocaleData;
+  currentLocale: "ja" | "en";
+}> = ({ skill, t, currentLocale }) => {
   const { isDark, colors } = useTheme();
 
-  function getSkillLevelText(level: number, t: LocaleData) {
-    if (level >= 80) {
+  function getSkillLevelText(level: number | undefined, t: LocaleData) {
+    if (level === undefined) {
+      return "N/A";
+    } else if (level >= 80) {
       return t.skillLevelAdvanced;
     } else if (level >= 50) {
       return t.skillLevelIntermediate;
@@ -210,25 +162,25 @@ const SkillItem: React.FC<{ skill: Skill; t: LocaleData; currentLocale: "ja" | "
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {/* アイコンの色を動的に変更 */}
-          {React.cloneElement(skill.icon, {
-            className: `h-5 w-5 text-${colors.primary} print:text-black`,
+    <div className="space-y-1">
+      <div className="flex items-center justify-start gap-6 ml-1">
+        <div className="flex items-center">
+          {React.cloneElement(isDark ? skill.iconDark : skill.iconLight, {
+            className: `h-6 w-6 text-${colors.primary} print:text-black`,
           })}
-          <span className="font-medium">{skill.name}</span>
+          <span className="ml-3 font-medium">{skill.name}</span>
         </div>
-        <span className={`text-gray-600 dark:text-gray-400 print:text-black`}>
-          {/* description を現在のロケールに基づいて表示 */}
+        <span
+          className={`text-gray-600 dark:text-gray-400 print:text-black whitespace-pre-wrap`}
+        >
           {skill.description[currentLocale] ||
             `${skill.level}% (${getSkillLevelText(skill.level, t)})`}
         </span>
       </div>
-      {/* プログレスバーの色を動的に変更 */}
       <Progress
         value={skill.level}
-        className={`h-2 print:bg-gray-200 ${isDark ? "bg-gray-700" : ""}`}
+        className={`h-2 mt-2 print:bg-gray-200 bg-${colors.primary}`}
+        indicatorClassName={`bg-blue-800 dark:bg-blue-900`}
       />
     </div>
   );
@@ -241,7 +193,6 @@ const CertificationItem: React.FC<{
 }> = ({ certification, currentLocale }) => {
   const { colors } = useTheme();
 
-  // 日付のフォーマット関数
   const formatDate = (dateString: string, locale: "ja" | "en") => {
     const date = new Date(dateString);
     const options: Intl.DateTimeFormatOptions = {
@@ -251,10 +202,9 @@ const CertificationItem: React.FC<{
     return new Intl.DateTimeFormat(locale, options).format(date);
   };
 
-  // dateがISO 8601形式（YYYY-MM）であると仮定して、それをDateオブジェクトに変換
   const formattedDate = useMemo(() => {
     const [year, month] = certification.date.split("-").map(Number);
-    const date = new Date(year, month - 1);
+    const date = new Date(year, month);
     return formatDate(date.toISOString().slice(0, 7), currentLocale);
   }, [certification.date, currentLocale]);
 
@@ -262,9 +212,9 @@ const CertificationItem: React.FC<{
     <div
       className={`flex items-center justify-between rounded-lg p-4 print:bg-gray-100 dark:bg-${colors.bgGrayDark} border print:border-gray-300`}
     >
-      {/* name を現在のロケールに基づいて表示 */}
-      <span className="font-medium print:text-black">{certification.name[currentLocale]}</span>
-      {/* フォーマットされた日付を表示 */}
+      <span className="font-medium print:text-black">
+        {certification.name[currentLocale]}
+      </span>
       <span className="text-sm text-gray-600 dark:text-gray-400 print:text-black">
         {formattedDate}
       </span>
@@ -284,26 +234,30 @@ const ProfileCard: React.FC<{
 
   return (
     <Card
-      className={`overflow-hidden print:shadow-none ${isDark ? `dark:bg-${colors.bgGrayDark} dark:text-white` : ""
-        } print:border print:border-gray-300`}
+      className={`overflow-hidden rounded-md print:shadow-none ${
+        isDark ? `dark:bg-${colors.bgGrayDark} dark:text-white` : ""
+      } print:border print:border-gray-300`}
     >
       <div
         className={`h-32 bg-gradient-to-r from-${colors.primary} to-${colors.secondary} print:h-16 print:bg-none`}
       />
-      <div className="relative">
+      <div className="relative p-4">
         <div className="absolute -top-16 left-4 print:-top-8">
           <div
             className={`h-32 w-32 rounded-full border-4 border-white bg-white shadow-lg print:h-16 print:w-16 print:border-2 print:border-gray-300`}
           >
             <img
-              src={profile.avatar || "/static/placeholder.png"}
+              loading="lazy"
+              src={profile.avatar || "/static/webp/placeholder.webp"}
               alt={t.profileCardContent.avatarAltText}
               className="h-full w-full rounded-full object-cover"
             />
           </div>
         </div>
         <CardContent className="pt-20 print:pt-12">
-          <h2 className="text-2xl font-bold print:text-xl print:text-black">{profile.name}</h2>
+          <h2 className="text-2xl font-bold print:text-xl print:text-black">
+            {profile.name}
+          </h2>
           <p
             className={`text-${colors.textGray} dark:text-${colors.textGrayDark} print:text-black`}
           >
@@ -377,13 +331,16 @@ const InterestsCard: React.FC<{ interests: string[]; t: LocaleData }> = ({
 
   return (
     <Card
-      className={`print:shadow-none ${isDark ? `dark:bg-${colors.bgGrayDark} dark:text-white` : ""
-        } border print:border-gray-300`}
+      className={`rounded-md print:shadow-none ${
+        isDark ? `dark:bg-${colors.bgGrayDark} dark:text-white` : ""
+      } border print:border-gray-300`}
     >
       <CardHeader>
-        <CardTitle className="text-lg print:text-black">{t.cards.interests.title}</CardTitle>
+        <CardTitle className="text-lg print:text-black">
+          {t.cards.interests.title}
+        </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4">
         <div className="flex flex-wrap gap-2">
           {interests.map((interest, index) => (
             <span
@@ -408,43 +365,60 @@ const ContactsCard: React.FC<{
 
   return (
     <Card
-      className={`print:shadow-none ${isDark ? `dark:bg-${colors.bgGrayDark} dark:text-white` : ""
-        } border print:border-gray-300`}
+      className={`rounded-md print:shadow-none ${
+        isDark ? `dark:bg-${colors.bgGrayDark} dark:text-white` : ""
+      } border print:border-gray-300`}
     >
-      <CardHeader>
-        <CardTitle className="text-lg print:text-black">{t.cards.contacts.title}</CardTitle>
+      <CardHeader
+        className={`bg-${colors.bgGrayLight} dark:bg-${colors.bgGrayDark} print:bg-white`}
+      >
+        <CardTitle className="text-lg print:text-black">
+          {t.cards.contacts.title}
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 p-4">
         <a
           href={`mailto:${contacts.email}`}
-          className={`flex items-center gap-3 text-${colors.textGray} hover:text-${colors.primary} print:text-black dark:text-${colors.textGrayDark} print:hover:text-blue-500`}
+          className={`flex items-center gap-2 text-${colors.textGray} hover:text-${colors.primary} print:text-black dark:text-${colors.textGrayDark} print:hover:text-blue-500 no-underline`}
         >
           <Mail className="h-5 w-5" aria-hidden="true" />
-          <span>{t.cards.contacts.emailLabel}</span>
-          <span className="break-all">{contacts.email}</span>
+          <div className="flex flex-col">
+            <span className="hover:underline">
+              {t.cards.contacts.emailLabel}
+            </span>
+            <span className="break-all hover:underline">{contacts.email}</span>
+          </div>
         </a>
         {contacts.github && (
           <a
-            href={contacts.github}
+            href={`https://github.com/${contacts.github}`}
             target="_blank"
             rel="noopener noreferrer"
-            className={`flex items-center gap-3 text-${colors.textGray} hover:text-${colors.primary} print:text-black dark:text-${colors.textGrayDark} print:hover:text-blue-500`}
+            className={`flex items-center gap-2 text-${colors.textGray} hover:text-${colors.primary} print:text-black dark:text-${colors.textGrayDark} print:hover:text-blue-500 no-underline`}
           >
             <Github className="h-5 w-5" aria-hidden="true" />
-            <span>{t.cards.contacts.githubLabel}</span>
-            <span className="break-all">{contacts.github}</span>
+            <div className="flex flex-col">
+              <span className="hover:underline">
+                {t.cards.contacts.githubLabel}
+              </span>
+              <span className="break-all hover:underline">
+                {contacts.github}
+              </span>
+            </div>
           </a>
         )}
         {contacts.x && (
           <a
-            href={contacts.x}
+            href={`https://twitter.com/${contacts.x}`}
             target="_blank"
             rel="noopener noreferrer"
-            className={`flex items-center gap-3 text-${colors.textGray} hover:text-${colors.primary} print:text-black dark:text-${colors.textGrayDark} print:hover:text-blue-500`}
+            className={`flex items-center gap-2 text-${colors.textGray} hover:text-${colors.primary} print:text-black dark:text-${colors.textGrayDark} print:hover:text-blue-500 no-underline`}
           >
             <Twitter className="h-5 w-5" aria-hidden="true" />
-            <span>{t.cards.contacts.xLabel}</span>
-            <span className="break-all">{contacts.x}</span>
+            <div className="flex flex-col">
+              <span className="hover:underline">{t.cards.contacts.xLabel}</span>
+              <span className="break-all hover:underline">{contacts.x}</span>
+            </div>
           </a>
         )}
       </CardContent>
@@ -462,20 +436,35 @@ const SkillsCard: React.FC<{
 
   return (
     <Card
-      className={`print:shadow-none ${isDark ? `dark:bg-${colors.bgGrayDark} dark:text-white` : ""
-        } border print:border-gray-300`}
+      className={`rounded-md print:shadow-none ${
+        isDark ? `dark:bg-${colors.bgGrayDark} dark:text-white` : ""
+      } border print:border-gray-300`}
     >
-      <CardHeader>
-        <CardTitle className="text-lg print:text-black">{t.cards.skills.title}</CardTitle>
+      <CardHeader
+        className={`bg-${colors.bgGrayLight} dark:bg-${colors.bgGrayDark} print:bg-white`}
+      >
+        <CardTitle className="text-lg print:text-black">
+          {t.cards.skills.title}
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6 print:space-y-4">
+      <CardContent className="space-y-4 p-4 print:space-y-4">
         {skills.map((skill) => (
-          <SkillItem
-            key={skill.name}
-            skill={skill}
-            t={t}
-            currentLocale={currentLocale}
-          />
+          <div key={skill.name}>
+            <SkillItem skill={skill} t={t} currentLocale={currentLocale} />
+            {skill.subSkills?.length && (
+              <div className="ml-4">
+                {skill.subSkills.map((sub) => (
+                  <div key={sub.name} className="mt-2">
+                    <SkillItem
+                      skill={sub}
+                      t={t}
+                      currentLocale={currentLocale}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
       </CardContent>
     </Card>
@@ -492,15 +481,18 @@ const CertificationsCard: React.FC<{
 
   return (
     <Card
-      className={`print:shadow-none ${isDark ? `dark:bg-${colors.bgGrayDark} dark:text-white` : ""
-        } border print:border-gray-300`}
+      className={`rounded-md print:shadow-none ${
+        isDark ? `dark:bg-${colors.bgGrayDark} dark:text-white` : ""
+      } border print:border-gray-300`}
     >
-      <CardHeader>
+      <CardHeader
+        className={`bg-${colors.bgGrayLight} dark:bg-${colors.bgGrayDark} print:bg-white`}
+      >
         <CardTitle className="text-lg print:text-black">
           {t.cards.certifications.title}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 p-4">
         {certifications.map((cert, index) => (
           <CertificationItem
             key={index}
@@ -556,40 +548,6 @@ export default function Index() {
 
   const t = useMemo(() => locales[currentLocale], [currentLocale]);
 
-  // プロフィールデータ
-  const profile: ProfileData = {
-    name: "名前",
-    title: {
-      ja: "タイトル",
-      en: "Title",
-    },
-    bio: {
-      ja: "自己紹介",
-      en: "Bio",
-    },
-    skills: [
-    ],
-    interests: {
-      ja: ["興味"],
-      en: ["Interests"],
-    },
-    certifications: [
-      {
-        name: {
-          ja: "資格名",
-          en: "Certification Name",
-        },
-        date: "YYYYY-MM",
-      },
-    ],
-    contacts: {
-      email: "URL",
-      github: "URL",
-      x: "URL",
-    },
-    avatar: "",
-  };
-
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
     if (typeof window !== "undefined") {
@@ -603,73 +561,78 @@ export default function Index() {
     }
   }, [currentLocale]);
 
-  useEffect(() => {
+  const handlePrintStyles = useCallback(() => {
     const style = document.createElement("style");
     style.textContent = `
-      @media print {
-        *, *::before, *::after {
-          color: black !important;
-          background-color: white !important;
-          box-shadow: none !important;
-          text-shadow: none !important;
+        @media print {
+          *, *::before, *::after {
+            color: black !important;
+            background-color: white !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+          }
+          @page {
+            size: A4;
+            margin: 1cm;
+          }
+          body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .print-hide {
+            display: none !important;
+          }
+          .print-break-avoid {
+            break-inside: avoid;
+          }
+          .container {
+            max-width: none !important;
+            padding: 0 !important;
+          }
+          .print-section-break {
+            break-before: always;
+          }
+          .print\\:h-16 {
+            height: 4rem;
+          }
+          .print\\:w-16 {
+            width: 4rem;
+          }
+          .print\\:-top-8 {
+            top: -2rem;
+          }
+          .print\\:pt-12 {
+            padding-top: 3rem;
+          }
+          .print\\:bg-none {
+            background: none !important;
+          }
+          .print\\:text-black {
+            color: black !important;
+          }
+          .print\\:border-gray-300 {
+            border-color: #d1d5db !important;
+          }
+          .print\\:hover\\:text-blue-500:hover {
+            color: #2563eb !important;
+          }
+          .print\\:border {
+            border-width: 1px !important;
+          }
         }
-        @page {
-          size: A4;
-          margin: 1cm;
-        }
-        body {
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-        .print-hide {
-          display: none !important;
-        }
-        .print-break-avoid {
-          break-inside: avoid;
-        }
-        .container {
-          max-width: none !important;
-          padding: 0 !important;
-        }
-        .print-section-break {
-          break-before: always;
-        }
-        .print\\:h-16 {
-          height: 4rem;
-        }
-        .print\\:w-16 {
-          width: 4rem;
-        }
-        .print\\:-top-8 {
-          top: -2rem;
-        }
-        .print\\:pt-12 {
-          padding-top: 3rem;
-        }
-        .print\\:bg-none {
-          background: none !important;
-        }
-        .print\\:text-black {
-          color: black !important;
-        }
-        .print\\:border-gray-300 {
-          border-color: #d1d5db !important;
-        }
-        .print\\:hover\\:text-blue-500:hover {
-          color: #2563eb !important;
-        }
-        .print\\:border {
-          border-width: 1px !important;
-        }
-      }
-    `;
+      `;
     document.head.appendChild(style);
     return () => {
       document.head.removeChild(style);
     };
   }, []);
 
-  const generateVCard = () => {
+  useEffect(() => {
+    const cleanup = handlePrintStyles();
+    return cleanup;
+  }, [handlePrintStyles]);
+
+  const generateVCard = useCallback(() => {
     if (
       !profile.name ||
       !profile.title[currentLocale] ||
@@ -684,10 +647,12 @@ VERSION:${VCARD_VERSION}
 FN:${profile.name}
 TITLE:${profile.title[currentLocale]}
 EMAIL:${profile.contacts.email}
-URL;type=${currentLocale === "ja" ? "Github" : "GitHub"}:${profile.contacts.github || ""
-      }
-URL;type=${currentLocale === "ja" ? "X" : "X (Twitter)"}:${profile.contacts.x || ""
-      }
+URL;type=${currentLocale === "ja" ? "Github" : "GitHub"}:${
+      profile.contacts.github || ""
+    }
+URL;type=${currentLocale === "ja" ? "X" : "X (Twitter)"}:${
+      profile.contacts.x || ""
+    }
 NOTE:${profile.bio[currentLocale]}
 END:VCARD`;
 
@@ -697,6 +662,7 @@ END:VCARD`;
       const link = document.createElement("a");
       link.href = url;
       link.download = `${profile.name}.vcf`;
+      link.type = "text/vcard";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -705,17 +671,18 @@ END:VCARD`;
       console.error("vCardの生成中にエラーが発生しました:", error);
       alert(t.vCardGenerateError);
     }
-  };
+  }, [profile, currentLocale, t]);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     window.print();
-  };
+  }, []);
 
   return (
     <ThemeContext.Provider value={themeContextValue}>
       <div
-        className={`min-h-screen ${isDark ? `dark bg-${colors.bgGrayDark}` : `bg-${colors.bgGrayLight}`
-          } py-12 print:bg-white print:py-0 transition-colors duration-200`}
+        className={`min-h-screen ${
+          isDark ? `dark bg-${colors.bgGrayDark}` : `bg-${colors.bgGrayLight}`
+        } py-12 print:bg-white print:py-0 transition-colors duration-200`}
       >
         <div className="container mx-auto px-4 print:px-0">
           <div className="mb-4 flex justify-end gap-2 print-hide">
@@ -726,6 +693,11 @@ END:VCARD`;
                 setCurrentLocale(currentLocale === "ja" ? "en" : "ja")
               }
               className={`text-${colors.textGray} dark:text-${colors.textGrayDark}`}
+              aria-label={
+                currentLocale === "ja"
+                  ? "Switch to English"
+                  : "日本語に切り替える"
+              }
             >
               {currentLocale === "ja" ? "EN" : "日本語"}
             </Button>
@@ -734,11 +706,14 @@ END:VCARD`;
               size="sm"
               onClick={() => setIsDark(!isDark)}
               className={`text-${colors.textGray} dark:text-${colors.textGrayDark}`}
+              aria-label={
+                isDark ? "Switch to Light Mode" : "Switch to Dark Mode"
+              }
             >
               {isDark ? (
-                <Sun className="h-4 w-4" />
+                <Sun className="h-4 w-4" aria-hidden="true" />
               ) : (
-                <Moon className="h-4 w-4" />
+                <Moon className="h-4 w-4" aria-hidden="true" />
               )}
             </Button>
           </div>
@@ -771,6 +746,7 @@ END:VCARD`;
               />
             </div>
           </div>
+          <link rel="canonical" href="https://valkyrie263.stormaeolus.net/" />
         </div>
       </div>
     </ThemeContext.Provider>
